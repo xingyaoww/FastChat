@@ -186,6 +186,7 @@ class ModelWorker(BaseModelWorker):
         num_gpus: int,
         max_gpu_memory: str,
         load_8bit: bool = False,
+        load_4bit: bool = False,
         cpu_offloading: bool = False,
         gptq_config: bool = None,
         stream_interval: int = 2,
@@ -208,6 +209,7 @@ class ModelWorker(BaseModelWorker):
             num_gpus,
             max_gpu_memory,
             load_8bit,
+            load_4bit,
             cpu_offloading,
             gptq_config,
         )
@@ -450,6 +452,7 @@ if __name__ == "__main__":
         num_gpus=args.num_gpus,
         max_gpu_memory=args.max_gpu_memory,
         load_8bit=args.load_8bit,
+        load_4bit=args.load_4bit,
         cpu_offloading=args.cpu_offloading,
         gptq_config=gptq_config,
         stream_interval=args.stream_interval,

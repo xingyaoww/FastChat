@@ -151,6 +151,7 @@ def load_model(
     num_gpus: int,
     max_gpu_memory: Optional[str] = None,
     load_8bit: bool = False,
+    load_4bit: bool = False,
     cpu_offloading: bool = False,
     gptq_config: Optional[GptqConfig] = None,
     revision: str = "main",
@@ -198,7 +199,21 @@ def load_model(
     else:
         raise ValueError(f"Invalid device: {device}")
 
-    if cpu_offloading:
+    if load_4bit:
+        # raises an error on incompatible platforms
+        from transformers import BitsAndBytesConfig
+
+        # https://huggingface.co/blog/4bit-transformers-bitsandbytes
+        kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            # TODO: figure out cpu offloading for 4bit
+        )
+        kwargs["load_in_4bit"] = True
+        print("Loading in 4bit")
+    elif cpu_offloading:
         # raises an error on incompatible platforms
         from transformers import BitsAndBytesConfig
 
@@ -241,7 +256,7 @@ def load_model(
     # Load model
     model, tokenizer = adapter.load_model(model_path, kwargs)
 
-    if (device == "cuda" and num_gpus == 1 and not cpu_offloading) or device in (
+    if (device == "cuda" and num_gpus == 1 and not cpu_offloading and not load_4bit) or device in (
         "mps",
         "xpu",
     ):
@@ -343,6 +358,9 @@ def add_model_args(parser):
     )
     parser.add_argument(
         "--load-8bit", action="store_true", help="Use 8-bit quantization"
+    )
+    parser.add_argument(
+        "--load-4bit", action="store_true", help="Use 4-bit quantization"
     )
     parser.add_argument(
         "--cpu-offloading",
