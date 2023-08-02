@@ -867,6 +867,21 @@ register_conv_template(
 
 register_conv_template(
     Conversation(
+        name="llama-2-empty-sys",
+        system="",
+        roles=("[INST]", "[/INST]"),
+        messages=(),
+        offset=0,
+        sep_style=SeparatorStyle.LLAMA2,
+        sep=" ",
+        sep2=" </s><s>",
+        stop_token_ids=[2],
+    )
+)
+
+
+register_conv_template(
+    Conversation(
         name="cutegpt",
         system="",
         roles=("问：", "答：\n"),

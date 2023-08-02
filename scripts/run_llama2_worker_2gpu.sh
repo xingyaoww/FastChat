@@ -4,7 +4,7 @@ SERVER_PORT=$((31000 + $SERVER_IDX))
 export FASTCHAT_WORKER_API_TIMEOUT=360
 python3 -m fastchat.serve.model_worker \
     --model-path meta-llama/Llama-2-7b-chat-hf \
-    --conv-template "llama-2" \
+    --conv-template "llama-2-empty-sys" \
     --host 0.0.0.0 \
     --port $SERVER_PORT \
     --worker http://0.0.0.0:$SERVER_PORT \
