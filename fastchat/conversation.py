@@ -1084,6 +1084,17 @@ register_conv_template(
     )
 )
 
+register_conv_template(
+    Conversation(
+        name="mint-agent",
+        system_template="<|im_start|>system\n{system_message}",
+        system_message="You are a helpful assistant.",
+        roles=("<|im_start|>user", "<|im_start|>assistant"),
+        sep_style=SeparatorStyle.CHATML,
+        sep="<|im_end|>",
+        stop_token_ids=[32000, 32001],  # These are the special tokens for <|im_start|> and <|im_end|>
+    )
+)
 
 if __name__ == "__main__":
     from fastchat.conversation import get_conv_template

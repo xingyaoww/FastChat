@@ -1380,6 +1380,37 @@ class OpenOrcaAdapter(BaseModelAdapter):
         return get_conv_template("open-orca")
 
 
+class MintAgentAdapter(BaseModelAdapter):
+    """Model adapter for MINT Agent.
+    
+    - It uses the [OpenAI's Chat Markup Language (ChatML)](https://github.com/openai/openai-python/blob/main/chatml.md)
+        format, with <|im_start|> and <|im_end|> tokens added to support this.
+    """
+
+    use_fast_tokenizer = False
+
+    def match(self, model_path: str):
+        if "mint_agent" in model_path.lower() or "mint-agent" in model_path.lower():
+            return get_conv_template("mint-agent")
+        else:
+            return False
+
+    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
+        revision = from_pretrained_kwargs.get("revision", "main")
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_path, use_fast=self.use_fast_tokenizer, revision=revision
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            low_cpu_mem_usage=True,
+            **from_pretrained_kwargs,
+        ).eval()
+        return model, tokenizer
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("mint-agent")
+
+
 class WizardCoderAdapter(BaseModelAdapter):
     """The model adapter for WizardCoder (e.g., WizardLM/WizardCoder-Python-34B-V1.0)"""
 
@@ -1728,6 +1759,7 @@ register_model_adapter(Llama2Adapter)
 register_model_adapter(MistralAdapter)
 register_model_adapter(CuteGPTAdapter)
 register_model_adapter(OpenOrcaAdapter)
+register_model_adapter(MintAgentAdapter)
 register_model_adapter(WizardCoderAdapter)
 register_model_adapter(QwenChatAdapter)
 register_model_adapter(AquilaChatAdapter)
