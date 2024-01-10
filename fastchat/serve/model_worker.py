@@ -22,6 +22,7 @@ from fastchat.model.model_adapter import (
 )
 from fastchat.modules.awq import AWQConfig
 from fastchat.modules.exllama import ExllamaConfig
+from fastchat.modules.xfastertransformer import XftConfig
 from fastchat.modules.gptq import GptqConfig
 from fastchat.serve.base_model_worker import BaseModelWorker, app
 from fastchat.utils import (
@@ -29,7 +30,6 @@ from fastchat.utils import (
     get_context_length,
     str_to_torch_dtype,
 )
-
 
 worker_id = str(uuid.uuid4())[:8]
 logger = build_logger("model_worker", f"model_worker_{worker_id}.log")
@@ -48,16 +48,19 @@ class ModelWorker(BaseModelWorker):
         device: str,
         num_gpus: int,
         max_gpu_memory: str,
+        revision: str = None,
         dtype: Optional[torch.dtype] = None,
         load_8bit: bool = False,
         cpu_offloading: bool = False,
         gptq_config: Optional[GptqConfig] = None,
         awq_config: Optional[AWQConfig] = None,
         exllama_config: Optional[ExllamaConfig] = None,
+        xft_config: Optional[XftConfig] = None,
         stream_interval: int = 2,
         conv_template: Optional[str] = None,
         embed_in_truncate: bool = False,
         seed: Optional[int] = None,
+        debug: bool = False,
         **kwargs,
     ):
         super().__init__(
@@ -73,6 +76,7 @@ class ModelWorker(BaseModelWorker):
         logger.info(f"Loading the model {self.model_names} on worker {worker_id} ...")
         self.model, self.tokenizer = load_model(
             model_path,
+            revision=revision,
             device=device,
             num_gpus=num_gpus,
             max_gpu_memory=max_gpu_memory,
@@ -82,6 +86,8 @@ class ModelWorker(BaseModelWorker):
             gptq_config=gptq_config,
             awq_config=awq_config,
             exllama_config=exllama_config,
+            xft_config=xft_config,
+            debug=debug,
         )
         self.device = device
         if self.tokenizer.pad_token == None:
@@ -96,6 +102,10 @@ class ModelWorker(BaseModelWorker):
             self.init_heart_beat()
 
     def generate_stream_gate(self, params):
+        if self.device == "npu":
+            import torch_npu
+
+            torch_npu.npu.set_device("npu:0")
         self.call_ct += 1
 
         try:
@@ -283,6 +293,16 @@ def create_model_worker():
         default=None,
         help="Overwrite the random seed for each generation.",
     )
+    parser.add_argument(
+        "--debug", type=bool, default=False, help="Print debugging messages"
+    )
+    parser.add_argument(
+        "--ssl",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable SSL. Requires OS Environment variables 'SSL_KEYFILE' and 'SSL_CERTFILE'.",
+    )
     args = parser.parse_args()
     logger.info(f"args: {args}")
 
@@ -308,9 +328,20 @@ def create_model_worker():
         exllama_config = ExllamaConfig(
             max_seq_len=args.exllama_max_seq_len,
             gpu_split=args.exllama_gpu_split,
+            cache_8bit=args.exllama_cache_8bit,
         )
     else:
         exllama_config = None
+    if args.enable_xft:
+        xft_config = XftConfig(
+            max_seq_len=args.xft_max_seq_len,
+            data_type=args.xft_dtype,
+        )
+        if args.device != "cpu":
+            print("xFasterTransformer now is only support CPUs. Reset device to CPU")
+            args.device = "cpu"
+    else:
+        xft_config = None
 
     worker = ModelWorker(
         args.controller_address,
@@ -319,6 +350,7 @@ def create_model_worker():
         args.model_path,
         args.model_names,
         args.limit_worker_concurrency,
+        revision=args.revision,
         no_register=args.no_register,
         device=args.device,
         num_gpus=args.num_gpus,
@@ -329,14 +361,26 @@ def create_model_worker():
         gptq_config=gptq_config,
         awq_config=awq_config,
         exllama_config=exllama_config,
+        xft_config=xft_config,
         stream_interval=args.stream_interval,
         conv_template=args.conv_template,
         embed_in_truncate=args.embed_in_truncate,
         seed=args.seed,
+        debug=args.debug,
     )
     return args, worker
 
 
 if __name__ == "__main__":
     args, worker = create_model_worker()
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    if args.ssl:
+        uvicorn.run(
+            app,
+            host=args.host,
+            port=args.port,
+            log_level="info",
+            ssl_keyfile=os.environ["SSL_KEYFILE"],
+            ssl_certfile=os.environ["SSL_CERTFILE"],
+        )
+    else:
+        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
