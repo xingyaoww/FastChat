@@ -202,6 +202,18 @@ if __name__ == "__main__":
         help="A list of models to be evaluated",
     )
     parser.add_argument(
+        "--answer-dir",
+        type=str,
+        default=None,
+        help="The directory of model answers. If not specified, use the default directory.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="The directory of model judgments. If not specified, use the default directory.",
+    )
+    parser.add_argument(
         "--parallel", type=int, default=1, help="The number of concurrent API calls."
     )
     parser.add_argument(
@@ -210,7 +222,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     question_file = f"data/{args.bench_name}/question.jsonl"
-    answer_dir = f"data/{args.bench_name}/model_answer"
+    if args.answer_dir is not None:
+        answer_dir = args.answer_dir
+        print(f"Use answer dir {answer_dir}")
+    else:
+        answer_dir = f"data/{args.bench_name}/model_answer"
     ref_answer_dir = f"data/{args.bench_name}/reference_answer"
 
     # Load questions
@@ -234,17 +250,23 @@ if __name__ == "__main__":
     if args.mode == "single":
         judges = make_judge_single(args.judge_model, judge_prompts)
         play_a_match_func = play_a_match_single
-        output_file = (
-            f"data/{args.bench_name}/model_judgment/{args.judge_model}_single.jsonl"
-        )
+        if args.output_dir is not None:
+            output_file = f"{args.output_dir}/{args.judge_model}_single.jsonl"
+        else:
+            output_file = (
+                f"data/{args.bench_name}/model_judgment/{args.judge_model}_single.jsonl"
+            )
         make_match_func = make_match_single
         baseline_model = None
     else:
         judges = make_judge_pairwise(args.judge_model, judge_prompts)
         play_a_match_func = play_a_match_pair
-        output_file = (
-            f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair.jsonl"
-        )
+        if args.output_dir is not None:
+            output_file = f"{args.output_dir}/{args.judge_model}_pair.jsonl"
+        else:
+            output_file = (
+                f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair.jsonl"
+            )
         if args.mode == "pairwise-all":
             make_match_func = make_match_all_pairs
             baseline_model = None
@@ -301,7 +323,7 @@ if __name__ == "__main__":
     # Show match stats and prompt enter to continue
     print("Stats:")
     print(json.dumps(match_stat, indent=4))
-    input("Press Enter to confirm...")
+    # input("Press Enter to confirm...")
 
     # Play matches
     if args.parallel == 1:
