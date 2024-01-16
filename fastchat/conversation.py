@@ -1086,7 +1086,7 @@ register_conv_template(
 
 register_conv_template(
     Conversation(
-        name="mint-agent",
+        name="code-act-agent",
         system_template="<|im_start|>system\n{system_message}",
         system_message="You are a helpful assistant.",
         roles=("<|im_start|>user", "<|im_start|>assistant"),

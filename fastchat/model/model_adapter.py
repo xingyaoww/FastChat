@@ -1390,8 +1390,8 @@ class MintAgentAdapter(BaseModelAdapter):
     use_fast_tokenizer = False
 
     def match(self, model_path: str):
-        if "mint_agent" in model_path.lower() or "mint-agent" in model_path.lower():
-            return get_conv_template("mint-agent")
+        if "mint_agent" in model_path.lower() or "code-act-agent" in model_path.lower():
+            return get_conv_template("code-act-agent")
         else:
             return False
 
@@ -1408,7 +1408,7 @@ class MintAgentAdapter(BaseModelAdapter):
         return model, tokenizer
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
-        return get_conv_template("mint-agent")
+        return get_conv_template("code-act-agent")
 
 
 class WizardCoderAdapter(BaseModelAdapter):
